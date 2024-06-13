@@ -1,3 +1,7 @@
+pub trait Room {
+    fn to_coords(&self) -> Vec<Coord>;
+}
+
 #[derive(Debug, Eq, PartialEq)]
 pub struct Coord {
     x: i32,
@@ -9,10 +13,6 @@ impl Coord {
     fn new(x: i32, y: i32) -> Self {
         Self { x, y }
     }
-}
-
-pub trait Room {
-    fn to_coords(&self) -> Vec<Coord>;
 }
 
 impl Room for Coord {
@@ -37,6 +37,25 @@ mod tests {
         match coords_head {
             None => panic!("Coord.to_coords should return a non-empty list"),
             Some(head) => assert_eq!(c, *head),
+        }
+    }
+}
+
+mod proptests {
+    use proptest::prelude::*;
+    use crate::Coord;
+    use crate::Room;
+
+    proptest! {
+        #[test]
+        fn coord_to_coords(x in 0..256, y in 0..256) {
+            let c = Coord::new(x, y);
+            let coords = c.to_coords();
+            let coords_head = coords.get(0);
+            match coords_head {
+                None => panic!("Coord.to_coords should return a non-empty list"),
+                Some(head) => assert_eq!(c, *head),
+            }
         }
     }
 }
