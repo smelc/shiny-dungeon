@@ -1,3 +1,5 @@
+use std::collections::{HashMap, HashSet};
+
 pub trait Room {
     fn to_coords(&self) -> Vec<Coord>;
 }
@@ -102,17 +104,74 @@ mod proptests {
 fn main() {
     println!("Generating a dungeon for you my lord");
 
-    let width = 80;
-    let height = 50;
+    let width: u32 = 80;
+    let height: u32 = 50;
 
-    let header = "#".repeat(width);
-    let inside = " ".repeat(width - 2);
+    let header = "#".repeat(width as usize);
+    let inside = " ".repeat(width as usize - 2);
     let inside2 = format!("#{inside}#");
 
-    // Print the enclosing walls
+    // Print top wall
     println!("{}", header);
-    for _i in 0..height - 2 {
-        println!("{}", inside2);
+
+    let mut rooms: Vec<&dyn Room> = Vec::new();
+    let room1: Rect = Rect {
+        left_x: 2,
+        top_y: 2,
+        width: 8,
+        height: 4,
+    };
+    rooms.push(&room1);
+
+    // Because we draw maps by iterating over y, then x; we populate this assymetric map first.
+    // We want the map to contain unsigned integers, because the part of the map we draw
+    // only consists of positive coordinates.
+    let mut y_to_xs: HashMap<u32, Vec<u32>> = HashMap::new();
+    for room in rooms.iter() {
+        let coords = room.to_coords();
+        for coord in coords {
+            let x_u32: Result<u32, _> = coord.x.try_into();
+            let y_u32: Result<u32, _> = coord.y.try_into();
+            match (x_u32, y_u32) {
+                (Err(_), _) => (),
+                (_, Err(_)) => (),
+                (Ok(positive_x), Ok(positive_y)) => {
+                    let opt_xs = y_to_xs.get_mut(&positive_x);
+                    match opt_xs {
+                        Some(xs) => xs.push(positive_x),
+                        None => {
+                            let mut xs = Vec::new();
+                            xs.push(positive_x);
+                            y_to_xs.insert(positive_y, xs);
+                            ()
+                        }
+                    }
+                }
+            }
+        }
     }
+
+    // Print inside
+    for y in 1..(height - 1) {
+        match y_to_xs.get(&y) {
+            Some(xs) => {
+                let to_print: HashSet<&u32> = HashSet::from_iter(xs);
+                // left wall
+                print!("#");
+                for x in 1..width - 1 {
+                    if to_print.contains(&x) {
+                        print!("#")
+                    } else {
+                        print!(" ")
+                    }
+                }
+                // right wall and wrapping to new line
+                println!("#");
+            }
+            None => println!("{}", inside2),
+        }
+    }
+
+    // Print bot wall
     println!("{}", header);
 }
